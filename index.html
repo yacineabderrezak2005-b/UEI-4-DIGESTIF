@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyse Stratégique des Sujets d'Examen – UEI 4 BLIDA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg: #0a0f0d;
+            --bg-card: #111a16;
+            --bg-card-hover: #162420;
+            --fg: #e8f0ec;
+            --fg-muted: #7a9488;
+            --accent: #00e08a;
+            --accent-dim: #00b870;
+            --accent-glow: rgba(0, 224, 138, 0.15);
+            --critique: #ff4757;
+            --critique-dim: rgba(255, 71, 87, 0.12);
+            --important: #ffa502;
+            --important-dim: rgba(255, 165, 2, 0.12);
+            --connaitre: #2ed573;
+            --connaitre-dim: rgba(46, 213, 115, 0.12);
+            --border: #1e3028;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3 { font-family: 'Playfair Display', serif; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
+
+        /* Animated background mesh */
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .hero-bg::before {
+            content: '';
+            position: absolute;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(0,224,138,0.08) 0%, transparent 70%);
+            top: -150px; right: -100px;
+            animation: float1 12s ease-in-out infinite;
+        }
+        .hero-bg::after {
+            content: '';
+            position: absolute;
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(255,71,87,0.06) 0%, transparent 70%);
+            bottom: -200px; left: -100px;
+            animation: float2 15s ease-in-out infinite;
+        }
+        @keyframes float1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-60px, 40px) scale(1.15); }
+        }
+        @keyframes float2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(50px, -30px) scale(1.1); }
+        }
+
+        /* Grid pattern overlay */
+        .grid-pattern {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,224,138,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,224,138,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            z-index: 0;
+        }
+
+        /* Stat card glow */
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+        .stat-card:hover {
+            border-color: var(--accent-dim);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0,224,138,0.08);
+        }
+        .stat-card:hover::before { opacity: 1; }
+
+        /* Category badge */
+        .badge-critique {
+            background: var(--critique-dim);
+            color: var(--critique);
+            border: 1px solid rgba(255,71,87,0.25);
+        }
+        .badge-important {
+            background: var(--important-dim);
+            color: var(--important);
+            border: 1px solid rgba(255,165,2,0.25);
+        }
+        .badge-connaitre {
+            background: var(--connaitre-dim);
+            color: var(--connaitre);
+            border: 1px solid rgba(46,213,115,0.25);
+        }
+
+        /* Topic row */
+        .topic-row {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+        .topic-row:hover {
+            background: var(--bg-card-hover);
+            border-color: rgba(0,224,138,0.2);
+            transform: translateX(4px);
+        }
+        .topic-row.critique-row:hover { border-color: rgba(255,71,87,0.3); }
+        .topic-row.important-row:hover { border-color: rgba(255,165,2,0.3); }
+        .topic-row.connaitre-row:hover { border-color: rgba(46,213,115,0.3); }
+
+        /* Frequency bar */
+        .freq-bar {
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            overflow: hidden;
+            position: relative;
+        }
+        .freq-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            width: 0;
+        }
+
+        /* Chart container */
+        .chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+        .chart-container::after {
+            content: '';
+            position: absolute;
+            top: -1px; left: 40px; right: 40px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
+        }
+
+        /* Recommendation card */
+        .rec-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.35s ease;
+        }
+        .rec-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .rec-card .rec-number {
+            width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        /* Filter buttons */
+        .filter-btn {
+            padding: 8px 18px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--fg-muted);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        .filter-btn:hover { border-color: var(--accent-dim); color: var(--fg); }
+        .filter-btn.active {
+            background: var(--accent-glow);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Fade-in animation */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Pulse dot */
+        .pulse-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            position: relative;
+        }
+        .pulse-dot::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            animation: pulse-ring 2s ease-out infinite;
+        }
+        .pulse-dot.red { background: var(--critique); }
+        .pulse-dot.red::after { border: 1px solid var(--critique); }
+        .pulse-dot.orange { background: var(--important); }
+        .pulse-dot.orange::after { border: 1px solid var(--important); }
+        .pulse-dot.green { background: var(--connaitre); }
+        .pulse-dot.green::after { border: 1px solid var(--connaitre); }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+
+        /* Floating particles */
+        .particle {
+            position: absolute;
+            width: 2px; height: 2px;
+            background: var(--accent);
+            border-radius: 50%;
+            opacity: 0;
+            animation: particle-float linear infinite;
+        }
+        @keyframes particle-float {
+            0% { opacity: 0; transform: translateY(0) scale(0); }
+            10% { opacity: 0.6; transform: scale(1); }
+            90% { opacity: 0.2; }
+            100% { opacity: 0; transform: translateY(-400px) scale(0.5); }
+        }
+
+        /* Tooltip */
+        .custom-tooltip {
+            position: fixed;
+            background: #1a2822;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s;
+            max-width: 300px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+        }
+        .custom-tooltip.show { opacity: 1; }
+
+        /* Nav */
+        nav {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            background: rgba(10,15,13,0.85);
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Credit section */
+        .credit-section {
+            background: linear-gradient(180deg, var(--bg) 0%, #0d1510 100%);
+            border-top: 1px solid var(--border);
+        }
+
+        /* Smooth scroll */
+        html { scroll-behavior: smooth; }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .chart-container { padding: 16px; }
+            .stat-card { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: var(--accent-glow); border: 1px solid rgba(0,224,138,0.3);">
+                    <i class="fas fa-microscope text-sm" style="color: var(--accent);"></i>
+                </div>
+                <span class="font-semibold text-sm tracking-wide" style="color: var(--fg);">UEI 4 — BLIDA</span>
+            </div>
+            <div class="hidden md:flex items-center gap-8 text-sm" style="color: var(--fg-muted);">
+                <a href="#chart" class="hover:text-white transition-colors">Graphique</a>
+                <a href="#topics" class="hover:text-white transition-colors">Sujets</a>
+                <a href="#reco" class="hover:text-white transition-colors">Recommandations</a>
+            </div>
+            <div class="flex items-center gap-2 text-xs" style="color: var(--fg-muted);">
+                <div class="pulse-dot green"></div>
+                <span>2020 – 2023</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="relative min-h-[85vh] flex items-center justify-center pt-20" id="hero">
+        <div class="hero-bg"></div>
+        <div class="grid-pattern"></div>
+        <div id="particles-container" class="absolute inset-0 z-0"></div>
+        <div class="relative z-10 text-center max-w-4xl mx-auto px-6">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold mb-8" style="background: var(--accent-glow); border: 1px solid rgba(0,224,138,0.2); color: var(--accent);">
+                <i class="fas fa-chart-line"></i>
+                Analyse de 3 années d'épreuves
+            </div>
+            <h1 class="text-5xl md:text-7xl font-black leading-tight mb-6" style="letter-spacing: -0.02em;">
+                Analyse Stratégique<br>
+                <span style="color: var(--accent);">des Sujets d'Examen</span>
+            </h1>
+            <p class="text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10" style="color: var(--fg-muted);">
+                Cartographie complète des 27 sujets d'examen UEI 4 de Blida — fréquences, catégories de priorité et recommandations pédagogiques ciblées.
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-4">
+                <a href="#chart" class="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-sm transition-all hover:scale-105" style="background: var(--accent); color: var(--bg); box-shadow: 0 4px 24px rgba(0,224,138,0.25);">
+                    <i class="fas fa-arrow-down"></i>
+                    Voir le graphique
+                </a>
+                <a href="#topics" class="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-sm transition-all hover:scale-105" style="background: transparent; color: var(--fg); border: 1px solid var(--border);">
+                    <i class="fas fa-list"></i>
+                    Tous les sujets
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Stats Overview -->
+    <section class="relative z-10 max-w-7xl mx-auto px-6 -mt-16 mb-20">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 fade-up">
+            <div class="stat-card">
+                <div class="text-xs font-semibold uppercase tracking-widest mb-2" style="color: var(--fg-muted);">Sujets analysés</div>
+                <div class="text-3xl font-black" style="color: var(--fg);">27</div>
+                <div class="text-xs mt-1" style="color: var(--accent);">thématiques distinctes</div>
+            </div>
+            <div class="stat-card">
+                <div class="text-xs font-semibold uppercase tracking-widest mb-2" style="color: var(--fg-muted);">Questions totales</div>
+                <div class="text-3xl font-black" style="color: var(--fg);">147</div>
+                <div class="text-xs mt-1" style="color: var(--critique);">sur 3 sessions</div>
+            </div>
+            <div class="stat-card">
+                <div class="text-xs font-semibold uppercase tracking-widest mb-2" style="color: var(--fg-muted);">Sujets critiques</div>
+                <div class="text-3xl font-black" style="color: var(--critique);">21</div>
+                <div class="text-xs mt-1" style="color: var(--critique);">priorité maximale</div>
+            </div>
+            <div class="stat-card">
+                <div class="text-xs font-semibold uppercase tracking-widest mb-2" style="color: var(--fg-muted);">Fréquence max</div>
+                <div class="text-3xl font-black" style="color: var(--accent);">13x</div>
+                <div class="text-xs mt-1" style="color: var(--fg-muted);">hémorragies & bilan HC</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Line Chart Section -->
+    <section class="max-w-7xl mx-auto px-6 mb-24" id="chart">
+        <div class="fade-up">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between mb-8 gap-4">
+                <div>
+                    <h2 class="text-3xl md:text-4xl font-bold mb-2">Courbe de Fréquence</h2>
+                    <p class="text-sm" style="color: var(--fg-muted);">Distribution des apparitions par sujet — survolez les points pour les détails</p>
+                </div>
+                <div class="flex items-center gap-3 text-xs flex-wrap">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full" style="background: var(--critique);"></div>
+                        <span style="color: var(--fg-muted);">Critique (≥4x)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full" style="background: var(--important);"></div>
+                        <span style="color: var(--fg-muted);">Important (3x)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full" style="background: var(--connaitre);"></div>
+                        <span style="color: var(--fg-muted);">A connaitre (2x)</span>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="freqChart" height="420"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- Category Distribution Mini Charts -->
+    <section class="max-w-7xl mx-auto px-6 mb-24">
+        <div class="fade-up">
+            <h2 class="text-3xl md:text-4xl font-bold mb-8">Répartition par Catégorie</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Critique -->
+                <div class="stat-card" style="border-top: 3px solid var(--critique);">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="pulse-dot red"></div>
+                            <span class="font-bold text-sm">CRITIQUE</span>
+                        </div>
+                        <span class="text-2xl font-black" style="color: var(--critique);">21</span>
+                    </div>
+                    <p class="text-xs mb-4" style="color: var(--fg-muted);">Sujets à très haute fréquence, souvent avec cas cliniques appliqués</p>
+                    <div class="flex items-center justify-between text-xs" style="color: var(--fg-muted);">
+                        <span>127 questions</span>
+                        <span>86% du total</span>
+                    </div>
+                    <div class="freq-bar mt-3">
+                        <div class="freq-bar-fill" data-width="86" style="background: var(--critique);"></div>
+                    </div>
+                </div>
+                <!-- Important -->
+                <div class="stat-card" style="border-top: 3px solid var(--important);">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="pulse-dot orange"></div>
+                            <span class="font-bold text-sm">IMPORTANT</span>
+                        </div>
+                        <span class="text-2xl font-black" style="color: var(--important);">4</span>
+                    </div>
+                    <p class="text-xs mb-4" style="color: var(--fg-muted);">Sujets fréquents, essentiellement théoriques</p>
+                    <div class="flex items-center justify-between text-xs" style="color: var(--fg-muted);">
+                        <span>12 questions</span>
+                        <span>8% du total</span>
+                    </div>
+                    <div class="freq-bar mt-3">
+                        <div class="freq-bar-fill" data-width="8" style="background: var(--important);"></div>
+                    </div>
+                </div>
+                <!-- A connaitre -->
+                <div class="stat-card" style="border-top: 3px solid var(--connaitre);">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="pulse-dot green"></div>
+                            <span class="font-bold text-sm">A CONNAITRE</span>
+                        </div>
+                        <span class="text-2xl font-black" style="color: var(--connaitre);">2</span>
+                    </div>
+                    <p class="text-xs mb-4" style="color: var(--fg-muted);">Sujets moins fréquents mais pouvant tomber</p>
+                    <div class="flex items-center justify-between text-xs" style="color: var(--fg-muted);">
+                        <span>4 questions</span>
+                        <span>3% du total</span>
+                    </div>
+                    <div class="freq-bar mt-3">
+                        <div class="freq-bar-fill" data-width="3" style="background: var(--connaitre);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Topics List -->
+    <section class="max-w-7xl mx-auto px-6 mb-24" id="topics">
+        <div class="fade-up">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between mb-8 gap-4">
+                <div>
+                    <h2 class="text-3xl md:text-4xl font-bold mb-2">Détail des Sujets</h2>
+                    <p class="text-sm" style="color: var(--fg-muted);">Cliquez sur un sujet pour voir le détail complet</p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button class="filter-btn active" data-filter="all">Tous (27)</button>
+                    <button class="filter-btn" data-filter="critique">Critique (21)</button>
+                    <button class="filter-btn" data-filter="important">Important (4)</button>
+                    <button class="filter-btn" data-filter="connaitre">A connaitre (2)</button>
+                </div>
+            </div>
+            <div class="space-y-3" id="topics-list"></div>
+        </div>
+    </section>
+
+    <!-- Recommendations -->
+    <section class="max-w-7xl mx-auto px-6 mb-24" id="reco">
+        <div class="fade-up">
+            <div class="flex items-center gap-3 mb-8">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: rgba(255,165,2,0.12); border: 1px solid rgba(255,165,2,0.25);">
+                    <i class="fas fa-lightbulb" style="color: var(--important);"></i>
+                </div>
+                <div>
+                    <h2 class="text-3xl md:text-4xl font-bold">Recommandations</h2>
+                    <p class="text-sm" style="color: var(--fg-muted);">Conseils pédagogiques du professeur</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="rec-card">
+                    <div class="flex items-start gap-4">
+                        <div class="rec-number" style="background: var(--critique-dim); color: var(--critique);">1</div>
+                        <div>
+                            <h3 class="font-bold text-sm mb-2" style="color: var(--fg);">Les Cas Cliniques font la différence</h3>
+                            <p class="text-xs leading-relaxed" style="color: var(--fg-muted);">Concentrez-vous massivement sur la résolution de situations cliniques typiques pour les Hémorragies digestives, l'Ictère, les Adénopathies et les anomalies de la FNS / Purpura. La restitution de cours pure ne suffira pas pour ces chapitres très coefficientés.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="rec-card">
+                    <div class="flex items-start gap-4">
+                        <div class="rec-number" style="background: var(--important-dim); color: var(--important);">2</div>
+                        <div>
+                            <h3 class="font-bold text-sm mb-2" style="color: var(--fg);">Le piege des anomalies ioniques</h3>
+                            <p class="text-xs leading-relaxed" style="color: var(--fg-muted);">Les perturbations du Magnésium et de la Kaliémie reviennent chaque année sans exception. Vous devez imperativement maitriser leurs conséquences sur l'ECG.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="rec-card">
+                    <div class="flex items-start gap-4">
+                        <div class="rec-number" style="background: var(--connaitre-dim); color: var(--connaitre);">3</div>
+                        <div>
+                            <h3 class="font-bold text-sm mb-2" style="color: var(--fg);">Imagerie de première intention</h3>
+                            <p class="text-xs leading-relaxed" style="color: var(--fg-muted);">L'ASP (critères techniques et résultats typiques comme le pneumopéritoine ou le rein mastic) est sur-représenté pour la partie radiologie. Ne négligez pas ses critères de validité.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Credit Footer -->
+    <footer class="credit-section py-12">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <div class="inline-flex items-center gap-3 mb-4">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--accent-glow); border: 1px solid rgba(0,224,138,0.2);">
+                    <i class="fas fa-heartbeat text-xs" style="color: var(--accent);"></i>
+                </div>
+                <span class="font-bold text-sm" style="color: var(--fg);">Medicine and Charity</span>
+            </div>
+            <p class="text-xs" style="color: var(--fg-muted);">
+                Analyse stratégique basée sur les épreuves 2020-2021, 2021-2022 et 2022-2023 — UEI 4, BLIDA
+            </p>
+            <p class="text-xs mt-2" style="color: var(--border);">
+                Outil pédagogique à visée révisionnelle — ne remplace pas le cours magistral
+            </p>
+        </div>
+    </footer>
+
+    <!-- Custom Tooltip -->
+    <div class="custom-tooltip" id="tooltip"></div>
+
+    <script>
+        // ===== DONNÉES COMPLÈTES =====
+        const topics = [
+            { freq: 13, cat: 'critique', title: 'Hémorragies digestives', detail: 'Étiologies, signes, et facteurs favorisants. Cas cliniques appliqués fréquents (conduite à tenir et examens à prescrire). Couvre les hémorragies hautes et basses.', type: 'Cas cliniques + Théorie' },
+            { freq: 13, cat: 'critique', title: 'Bilan hépatique', detail: 'Interprétation enzymatique (Transaminases, PAL, GGT, TP). Cytolyse, Cholestase, Insuffisance hépatocellulaire. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 11, cat: 'critique', title: 'Ictères', detail: 'Mécanismes et étiologies. Diagnostics différentiels (hémolyse, rétention). Exercices pratiques et cas cliniques d\'orientation avec bilans sanguins.', type: 'Cas cliniques + Exercices' },
+            { freq: 11, cat: 'critique', title: 'Hémostase et Coagulation', detail: 'Voies primaire/secondaire, Facteurs Vit-K dépendants, exploration (TP, Temps de saignement). Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 10, cat: 'critique', title: 'Adénopathies', detail: 'Sémiologie et territoires. Aires de drainage (ex: ganglion de Troisier), orientation étiologique. Problèmes / Cas cliniques diagnostiques.', type: 'Cas cliniques diagnostiques' },
+            { freq: 7, cat: 'critique', title: 'Troubles du Magnésium', detail: 'Hypo/Hypermagnésémie : Signes cliniques, troubles neuromusculaires, anomalies ECG. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 7, cat: 'critique', title: 'Ascite', detail: 'Sémiologie et diagnostic. Étiologies, ponction, exsudat vs transsudat, gradient d\'albumine. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 6, cat: 'critique', title: 'Sémiologie Proctologique', detail: 'Objectifs du toucher rectal, caractéristiques de la fissure anale et des hémorroïdes. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 6, cat: 'critique', title: 'Douleurs Abdominales', detail: 'Types et caractéristiques : Colique, douleur ulcéreuse, pancréatique, et signes de défense pariétale. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 6, cat: 'critique', title: 'Sémiologie de la Rate', detail: 'Splénomégalie : Examen physique, repères anatomiques, étiologies, bilans systématiques. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 6, cat: 'critique', title: 'Anémies', detail: 'Sémiologie et typage : Signes cliniques, carences (Biermer), drépanocytose. Exercices d\'interprétation de paramètres de la FNS (Hb, VGM).', type: 'Exercices d\'interprétation' },
+            { freq: 6, cat: 'critique', title: 'Troubles du Transit', detail: 'Diarrhée, Constipation, Dysenterie : Définitions physiopathologiques (motrice/sécrétoire) et syndromes associés. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 5, cat: 'critique', title: 'Troubles de la Kaliémie', detail: 'Hypo/Hyperkaliémie : Étiologies, signes ECG (onde T), gestion thérapeutique d\'urgence. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 5, cat: 'critique', title: 'Pathologies Inflammatoires Intestinales', detail: 'Maladie de Crohn, Maladie Cœliaque, signes de malabsorption et marqueurs. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 5, cat: 'critique', title: 'Purpura et Pathologies Vasculaires', detail: 'Différenciation (thrombopénique vs vasculaire), caractéristiques cliniques. Cas cliniques d\'urgence (Purpura fulminant).', type: 'Cas cliniques d\'urgence' },
+            { freq: 5, cat: 'critique', title: 'Radiologie : ASP', detail: 'Abdomen Sans Préparation : Critères de réussite technique, positionnement, et indications générales. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 5, cat: 'critique', title: 'Hépatites', detail: 'Aiguë et Fulminante : Signes de gravité (chute du TP, encéphalopathie), évolution et étiologies. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 4, cat: 'critique', title: 'Pancréatites', detail: 'Aiguë et Chronique : Dosage enzymatique (lipase, amylase), signes cliniques de gravité. Cas clinique appliqué régulier.', type: 'Cas clinique appliqué' },
+            { freq: 4, cat: 'critique', title: 'Examen Physique Hépatique', detail: 'Calcul de la flèche hépatique, repérage des limites et caractérisation des hépatomégalies. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 4, cat: 'critique', title: 'Biochimie des Protéines Plasmatiques', detail: 'Fonctions de l\'albumine, maladie de Wilson, protéine de Bence-Jones. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 4, cat: 'critique', title: 'Imagerie Abdominale (Écho/TDM)', detail: 'Indications du produit de contraste, détection d\'épanchement, limites de l\'espace de Morisson. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 3, cat: 'important', title: 'Radiologie : Pneumopéritoine', detail: 'Interprétation radiologique à l\'ASP (croissant gazeux) et étiologies. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 3, cat: 'important', title: 'Sémiologie de la Cavité Buccale', detail: 'Inspection de la langue (saburrale, rôtie, dépapillée) et des muqueuses. Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 3, cat: 'important', title: 'Marqueurs Tumoraux', detail: 'Cinétique de suivi (Nadir, demi-vie) et spécificités (CA 19-9, ACE). Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 3, cat: 'important', title: 'Dysphagie', detail: 'Diagnostics différentiels entre dysphagie lésionnelle (progressive) et fonctionnelle (capricieuse/paradoxale). Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 2, cat: 'connaitre', title: 'Hypertension Portale (HTP)', detail: 'Gradients de pression, signes cliniques et complications (varices). Questions purement théoriques.', type: 'Purement théorique' },
+            { freq: 2, cat: 'connaitre', title: 'Généralités de l\'Examen Digestif', detail: 'Topographie abdominale et posture adéquate pour l\'examen. Questions purement théoriques.', type: 'Purement théorique' }
+        ];
+
+        // ===== COULEURS PAR CATÉGORIE =====
+        const catColors = {
+            critique: { main: '#ff4757', bg: 'rgba(255,71,87,0.12)', border: 'rgba(255,71,87,0.3)' },
+            important: { main: '#ffa502', bg: 'rgba(255,165,2,0.12)', border: 'rgba(255,165,2,0.3)' },
+            connaitre: { main: '#2ed573', bg: 'rgba(46,213,115,0.12)', border: 'rgba(46,213,115,0.3)' }
+        };
+        const catLabels = { critique: 'CRITIQUE', important: 'IMPORTANT', connaitre: 'A CONNAITRE' };
+
+        // ===== PARTICULES FLOTTANTES =====
+        (function createParticles() {
+            const container = document.getElementById('particles-container');
+            for (let i = 0; i < 25; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.left = Math.random() * 100 + '%';
+                p.style.bottom = '-10px';
+                p.style.animationDuration = (6 + Math.random() * 10) + 's';
+                p.style.animationDelay = Math.random() * 8 + 's';
+                p.style.width = (1 + Math.random() * 2) + 'px';
+                p.style.height = p.style.width;
+                container.appendChild(p);
+            }
+        })();
+
+        // ===== GRAPHIQUE EN LIGNE (Chart.js) =====
+        (function createChart() {
+            const ctx = document.getElementById('freqChart').getContext('2d');
+
+            // Préparation des données triées par fréquence décroissante
+            const sorted = [...topics].sort((a, b) => b.freq - a.freq);
+            const labels = sorted.map(t => t.title.length > 22 ? t.title.slice(0, 22) + '…' : t.title);
+            const data = sorted.map(t => t.freq);
+            const pointColors = sorted.map(t => catColors[t.cat].main);
+
+            // Gradient de remplissage
+            const gradient = ctx.createLinearGradient(0, 0, 0, 420);
+            gradient.addColorStop(0, 'rgba(0,224,138,0.15)');
+            gradient.addColorStop(0.5, 'rgba(0,224,138,0.04)');
+            gradient.addColorStop(1, 'rgba(0,224,138,0)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Fréquence d\'apparition',
+                        data: data,
+                        borderColor: '#00e08a',
+                        backgroundColor: gradient,
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.35,
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: pointColors,
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 9,
+                        pointHoverBorderWidth: 3,
+                        pointHoverBackgroundColor: '#0a0f0d',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1a2822',
+                            titleColor: '#e8f0ec',
+                            bodyColor: '#7a9488',
+                            borderColor: '#1e3028',
+                            borderWidth: 1,
+                            cornerRadius: 10,
+                            padding: 14,
+                            titleFont: { family: 'DM Sans', weight: '700', size: 13 },
+                            bodyFont: { family: 'DM Sans', size: 12 },
+                            callbacks: {
+                                title: function(items) {
+                                    const idx = items[0].dataIndex;
+                                    return sorted[idx].title;
+                                },
+                                label: function(item) {
+                                    const idx = item.dataIndex;
+                                    return [
+                                        `Fréquence : ${item.raw}x`,
+                                        `Catégorie : ${catLabels[sorted[idx].cat]}`,
+                                        `Type : ${sorted[idx].type}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(30,48,40,0.5)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#7a9488',
+                                font: { family: 'DM Sans', size: 10 },
+                                maxRotation: 55,
+                                minRotation: 35
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 15,
+                            grid: {
+                                color: 'rgba(30,48,40,0.4)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#7a9488',
+                                font: { family: 'DM Sans', size: 11 },
+                                stepSize: 2,
+                                callback: function(val) { return val + 'x'; }
+                            }
+                        }
+                    }
+                }
+            });
+        })();
+
+        // ===== LISTE DES SUJETS =====
+        let currentFilter = 'all';
+
+        function renderTopics(filter) {
+            const list = document.getElementById('topics-list');
+            const filtered = filter === 'all' ? [...topics] : topics.filter(t => t.cat === filter);
+            // Trier par fréquence décroissante
+            filtered.sort((a, b) => b.freq - a.freq);
+
+            list.innerHTML = '';
+            filtered.forEach((topic, i) => {
+                const colors = catColors[topic.cat];
+                const barWidth = Math.round((topic.freq / 13) * 100);
+                const isCasClinique = topic.type.includes('Cas') || topic.type.includes('Exercice');
+
+                const row = document.createElement('div');
+                row.className = `topic-row ${topic.cat}-row`;
+                row.style.animationDelay = (i * 40) + 'ms';
+                row.setAttribute('role', 'button');
+                row.setAttribute('tabindex', '0');
+                row.setAttribute('aria-label', `${topic.title}, fréquence ${topic.freq}x, ${catLabels[topic.cat]}`);
+
+                row.innerHTML = `
+                    <div class="flex flex-col md:flex-row md:items-center gap-3">
+                        <div class="flex items-center gap-3 md:w-8 flex-shrink-0">
+                            <span class="text-xs font-bold" style="color: ${colors.main};">#${i + 1}</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap mb-1">
+                                <span class="font-semibold text-sm" style="color: var(--fg);">${topic.title}</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold badge-${topic.cat}">${catLabels[topic.cat]}</span>
+                                ${isCasClinique ? '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold" style="background: rgba(0,224,138,0.1); color: #00e08a; border: 1px solid rgba(0,224,138,0.2);"><i class="fas fa-stethoscope mr-1"></i>Cas clinique</span>' : ''}
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="freq-bar flex-1 max-w-xs">
+                                    <div class="freq-bar-fill" data-width="${barWidth}" style="background: ${colors.main};"></div>
+                                </div>
+                                <span class="text-xs font-bold flex-shrink-0" style="color: ${colors.main};">${topic.freq}x</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="text-[10px] px-2 py-1 rounded-md" style="background: var(--bg); color: var(--fg-muted); border: 1px solid var(--border);">${topic.type}</span>
+                            <i class="fas fa-chevron-down text-[10px] transition-transform" style="color: var(--fg-muted);"></i>
+                        </div>
+                    </div>
+                    <div class="detail-panel hidden mt-4 pt-4" style="border-top: 1px solid var(--border);">
+                        <p class="text-xs leading-relaxed" style="color: var(--fg-muted);">${topic.detail}</p>
+                    </div>
+                `;
+
+                // Toggle detail on click
+                row.addEventListener('click', () => {
+                    const panel = row.querySelector('.detail-panel');
+                    const chevron = row.querySelector('.fa-chevron-down');
+                    const isHidden = panel.classList.contains('hidden');
+                    // Fermer tous les autres
+                    list.querySelectorAll('.detail-panel').forEach(p => p.classList.add('hidden'));
+                    list.querySelectorAll('.fa-chevron-down').forEach(c => c.style.transform = 'rotate(0deg)');
+                    if (isHidden) {
+                        panel.classList.remove('hidden');
+                        chevron.style.transform = 'rotate(180deg)';
+                    }
+                });
+                row.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.click(); }
+                });
+
+                list.appendChild(row);
+            });
+
+            // Animer les barres de fréquence
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    list.querySelectorAll('.freq-bar-fill').forEach(bar => {
+                        bar.style.width = bar.dataset.width + '%';
+                    });
+                }, 100);
+            });
+        }
+
+        renderTopics('all');
+
+        // ===== FILTRES =====
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                renderTopics(currentFilter);
+            });
+        });
+
+        // ===== ANIMATION D'ENTRÉE (IntersectionObserver) =====
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    // Animer les barres de fréquence des catégories
+                    entry.target.querySelectorAll('.freq-bar-fill[data-width]').forEach(bar => {
+                        setTimeout(() => {
+                            bar.style.width = bar.dataset.width + '%';
+                        }, 300);
+                    });
+                }
+            });
+        }, { threshold: 0.15 });
+
+        document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+        // ===== NAV SCROLL EFFECT =====
+        const nav = document.querySelector('nav');
+        let lastScroll = 0;
+        window.addEventListener('scroll', () => {
+            const y = window.scrollY;
+            if (y > 80) {
+                nav.style.boxShadow = '0 4px 30px rgba(0,0,0,0.4)';
+            } else {
+                nav.style.boxShadow = 'none';
+            }
+            lastScroll = y;
+        }, { passive: true });
+
+        // ===== compteur animé pour les stats =====
+        function animateCounters() {
+            const counters = document.querySelectorAll('.stat-card .text-3xl');
+            counters.forEach(counter => {
+                const text = counter.textContent;
+                const match = text.match(/(\d+)/);
+                if (!match) return;
+                const target = parseInt(match[1]);
+                const suffix = text.replace(match[1], '');
+                let current = 0;
+                const step = Math.max(1, Math.floor(target / 30));
+                const interval = setInterval(() => {
+                    current += step;
+                    if (current >= target) {
+                        current = target;
+                        clearInterval(interval);
+                    }
+                    counter.textContent = current + suffix;
+                }, 30);
+            });
+        }
+
+        // Lancer les compteurs quand la section stats est visible
+        const statsSection = document.querySelector('.stat-card');
+        if (statsSection) {
+            const statsObserver = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting) {
+                    animateCounters();
+                    statsObserver.disconnect();
+                }
+            }, { threshold: 0.5 });
+            statsObserver.observe(statsSection);
+        }
+    </script>
+</body>
+</html>
